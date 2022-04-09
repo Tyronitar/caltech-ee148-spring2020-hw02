@@ -1,9 +1,12 @@
 import os
-import numpy as np
 import json
+from tkinter import W
+
+import numpy as np
+import matplotlib.pyplot as plt
 from PIL import Image
 
-from utils import convolve
+from utils import convolve, downsample, make_kernels
 
 def compute_convolution(I, T, stride=None):
     '''
@@ -81,9 +84,12 @@ def detect_red_light_mf(I):
 
     # You may use multiple stages and combine the results
     T = np.random.random((template_height, template_width))
+    kernels = make_kernels()
 
-    heatmap = compute_convolution(I, T)
+    heatmap = compute_convolution(I, kernels[0])
     output = predict_boxes(heatmap)
+    plt.imshow(heatmap)
+    plt.show()
 
     '''
     END YOUR CODE
@@ -115,15 +121,20 @@ done_tweaking = False
 Make predictions on the training set.
 '''
 preds_train = {}
-for i in range(len(file_names_train)):
+# for i in range(len(file_names_train)):
+for i in range(1):
 
     # read image using PIL:
-    I = Image.open(os.path.join(data_path,file_names_train[i]))
+    # I = Image.open(os.path.join(data_path,file_names_train[i]))
+    I = Image.open(os.path.join(data_path,"RL-010.jpg"))
+    small = downsample(I, 2)
+    small.show()
 
     # convert to numpy array:
-    I = np.asarray(I)
+    small = np.asarray(small)
+    bounding_box = detect_red_light_mf(small)
 
-    preds_train[file_names_train[i]] = detect_red_light_mf(I)
+    # preds_train[file_names_train[i]] = detect_red_light_mf(I)
 
 # save preds (overwrites any previous predictions!)
 with open(os.path.join(preds_path,'preds_train.json'),'w') as f:
