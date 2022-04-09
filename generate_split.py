@@ -1,11 +1,14 @@
-import numpy as np
 import os
+import json
+
+import numpy as np
 
 np.random.seed(2020) # to ensure you always get the same train/test split
 
-data_path = '../data/RedLights2011_Medium'
-gts_path = '../data/hw02_annotations'
-split_path = '../data/hw02_splits'
+data_path = 'data/RedLights2011_Medium'
+preds_path = 'data/hw02_preds'
+gts_path = 'data/hw02_annotations'
+split_path = 'data/hw02_splits'
 os.makedirs(preds_path, exist_ok=True) # create directory if needed
 
 split_test = False # set to True and run when annotations are available
@@ -24,6 +27,14 @@ file_names_test = []
 '''
 Your code below. 
 '''
+
+for f in file_names:
+    r = np.random.rand()
+    if r > 0.85:
+        file_names_test.append(f)
+    else:
+        file_names_train.append(f)
+
 
 assert (len(file_names_train) + len(file_names_test)) == len(file_names)
 assert len(np.intersect1d(file_names_train,file_names_test)) == 0

@@ -46,8 +46,8 @@ def compute_counts(preds, gts, iou_thr=0.5, conf_thr=0.5):
     return TP, FP, FN
 
 # set a path for predictions and annotations:
-preds_path = '../data/hw02_preds'
-gts_path = '../data/hw02_annotations'
+preds_path = 'data/hw02_preds'
+gts_path = 'data/hw02_annotations'
 
 # load splits:
 split_path = '../data/hw02_splits'
