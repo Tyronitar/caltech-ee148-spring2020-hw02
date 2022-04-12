@@ -1,5 +1,7 @@
+from ast import BitXor
 from operator import mod
 import os
+from timeit import timeit
 from tkinter import W
 
 import numpy as np
@@ -111,7 +113,7 @@ save=None) -> None:
         I.save(save)
 
 
-def nsm(boxes: list[list[int]], threshold: float=0.4) -> list[list[int]]:
+def nms(boxes: list[list[int]], threshold: float=0.4) -> list[list[int]]:
     """Merge overlapping boxes with non-maximum suppression"""
     out = []
     boxes = np.array(boxes)
@@ -151,7 +153,7 @@ def nsm(boxes: list[list[int]], threshold: float=0.4) -> list[list[int]]:
         # Delete redundant boxes
         indices = np.delete(indices, last)
         indices = np.delete(indices, np.where(overlap > threshold)[0])
-    return boxes[pick].astype(int).tolist()
+    return boxes[pick]
 
 def fuse_boxes(boxes: list[list[int]], threshold: float=0.4) -> list[list[int]]:
     # Merge boxes that are completely contianed in one another
@@ -175,14 +177,11 @@ def fuse_boxes(boxes: list[list[int]], threshold: float=0.4) -> list[list[int]]:
         if not contained[0].any():
             pick.append(i)
     
-    return boxes[pick].astype(int)
+    return boxes[pick]
 
 
 def merge_boxes(boxes: list[list[int]], threshold: float=0.4) -> list[list[int]]:
     if len(boxes) < 2:
         return boxes
 
-    fused = fuse_boxes(boxes)
-    suppressed = nsm(fused)
-
-    return suppressed
+    return nms(fuse_boxes(boxes))

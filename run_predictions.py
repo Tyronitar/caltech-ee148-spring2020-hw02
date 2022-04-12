@@ -1,16 +1,20 @@
 import os
 import json
 from tkinter import W
+import timeit
 
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 from pyinstrument import Profiler
+import tqdm
 
 from utils import convolve, downsample, make_kernels, merge_boxes, visualize
 
 CENTER_THRESHOLD = 0.90
 CONFIDENCE_THRESHOLD = 0.70
+MIN_WIDTH = 5
+MIN_HEIGHT = 5
 
 def compute_convolution(I, T, stride=None):
     '''
@@ -39,6 +43,8 @@ def predict_boxes(heatmap, T):
         toplc = pt[1] - w // 2
         botrr = pt[0] + h // 2
         botrc = pt[1] + w // 2
+        if botrr == toplr or botrc == toplc:
+            continue
         conf = heatmap[toplr:botrr, toplc:botrc].mean()
         if conf > CONFIDENCE_THRESHOLD:
             output.append([pt[0] - h // 2, pt[1] - w // 2, pt[0] + h // 2, pt[1] + w // 2, conf])
@@ -62,7 +68,6 @@ def detect_red_light_mf(I, sampling_factor=2):
     I[:,:,2] is the blue channel
     '''
 
-    kernels = make_kernels(sampling_factor=sampling_factor)
     output = []
 
     heatmap = np.zeros(I.shape[:2])
@@ -70,8 +75,10 @@ def detect_red_light_mf(I, sampling_factor=2):
         heatmap = compute_convolution(I, k)
         output.extend(predict_boxes(heatmap, k))
     output  = merge_boxes(output)
-    output = (np.array(output) * sampling_factor).tolist()
-    return output
+    output = np.array(output)
+    if len(output) > 0:
+        output[:, :-1] *= sampling_factor
+    return output.tolist()
 
 # Note that you are not allowed to use test data for training.
 # set the path to the downloaded data:
@@ -93,21 +100,26 @@ done_tweaking = False
 Make predictions on the training set.
 '''
 preds_train = {}
-# for i in range(len(file_names_train)):
-for i in range(1):
+SAMPLING_FACTOR = 3
+
+kernels = make_kernels(sampling_factor=SAMPLING_FACTOR)
+
+print("Generating Predicitons...\n")
+for i in tqdm.tqdm(range(len(file_names_train))):
+# for i in range(1):
 
     # read image using PIL:
-    # I = Image.open(os.path.join(data_path,file_names_train[i])).convert('HSV')
-    I = Image.open(os.path.join(data_path,"RL-010.jpg")).convert('HSV')
-    small = downsample(I, 2)
+    I = Image.open(os.path.join(data_path,file_names_train[i])).convert('HSV')
+    # I = Image.open(os.path.join(data_path,"RL-010.jpg")).convert('HSV')
+    small = downsample(I, SAMPLING_FACTOR)
 
     # convert to numpy array:
     small_arr = np.asarray(small)
 
-    bounding_boxes = detect_red_light_mf(small_arr, 2)
-    visualize(I, bounding_boxes)
+    bounding_boxes = detect_red_light_mf(small_arr, SAMPLING_FACTOR)
+    # visualize(I, bounding_boxes)
 
-    # preds_train[file_names_train[i]] = detect_red_light_mf(I)
+    preds_train[file_names_train[i]] = bounding_boxes
 
 # save preds (overwrites any previous predictions!)
 with open(os.path.join(preds_path,'preds_train.json'),'w') as f:
