@@ -1,7 +1,8 @@
 import os
 
 import numpy as np
-from PIL import Image
+from numpy.lib.stride_tricks import sliding_window_view
+from PIL import Image, ImageDraw
 
 DATA_PATH = 'data/RedLights2011_Medium'
 
@@ -19,12 +20,7 @@ def normalize_arr(arr: np.ndarray) -> np.ndarray:
     http://en.wikipedia.org/wiki/Normalization_%28image_processing%29
     """
     arr = arr.astype('float')
-    # minval = arr.min(axis=(0, 1), keepdims=True)
-    # maxval = arr.max(axis=(0, 1), keepdims=True)
-    # print(minval, maxval)
-    # print(arr)
-    # arr = (arr - minval) * 255.0 / (maxval - minval)
-    # print(arr)
+
     for i in range(3):
         minval = arr[...,i].min()
         maxval = arr[...,i].max()
@@ -52,11 +48,9 @@ def downsample(I: Image.Image, s: int = 1) -> Image.Image:
 def convolve(A: np.ndarray, B: np.ndarray, mode='cosine') -> np.ndarray:
     assert mode in ['cosine', 'dot']
 
-    rows, cols, _ = A.shape
+    rows, cols, n_chan = A.shape
     h, w, _ = B.shape
-    window_indices = np.indices(B.shape[:2])
     result = np.zeros(A.shape[:2])
-    b = B.ravel()
     b_norm = np.linalg.norm(B)
 
     # Zero pad A
@@ -64,14 +58,12 @@ def convolve(A: np.ndarray, B: np.ndarray, mode='cosine') -> np.ndarray:
     right_pad = w - 1 - left_pad
     top_pad = (h - 1) // 2
     bot_pad = h - 1 - top_pad
-    padded = np.pad(A, ((top_pad, bot_pad), (left_pad, right_pad), (0, 0)), 'constant')
+    padded = np.zeros((rows + top_pad + bot_pad, cols + left_pad + right_pad, n_chan))
+    padded[top_pad:top_pad + rows, left_pad:left_pad + cols, :] = A
 
     for i in range(rows):
         for j in range(cols):
-            row_ids = window_indices[0] + i
-            col_ids = window_indices[1] + j
-            
-            window = padded[row_ids, col_ids, :]
+            window = padded[i:i + h, j:j + w, :]
             if mode == 'cosine':
                 result[i, j] = np.einsum('ijk,ijk', B, window) / (b_norm * np.linalg.norm(window))
             else:
@@ -85,12 +77,32 @@ def make_kernels() -> list[np.ndarray]:
     for img, boxes in KERNEL_BOXES.items():
         I = Image.open(os.path.join(DATA_PATH, img))
         for box in boxes:
-            k_img = I.crop(tuple(box))
-            # k_img = normalize_img(I.crop(tuple(box)))
+            k_img = I.crop(tuple(box)).convert('HSV')
             k_img = downsample(k_img, 2)
             kernels.append(np.asarray(k_img))
     
-    kernels.append(np.asarray(downsample(Image.fromarray(kernels[0]), 2)))
-    kernels.append(np.asarray(downsample(Image.fromarray(kernels[1]), 2)))
+    kernels.append(np.asarray(downsample(Image.fromarray(kernels[0], mode='HSV'), 2)))
+    kernels.append(np.asarray(downsample(Image.fromarray(kernels[1], mode='HSV'), 2)))
 
     return kernels
+
+
+def visualize(I: Image.Image,
+bounding_boxes: list[list[int]],
+outline: str = "red",
+save=None) -> None:
+    """Visualize the bounding boxes in the image"""
+    I = I.convert('RGB')
+    img = ImageDraw.Draw(I)
+    for box in bounding_boxes:
+        draw_box = (box[1], box[0], box[3], box[2])
+        img.rectangle(draw_box, outline=outline)
+    I.show()
+    if save is not None:
+        I.save(save)
+
+
+def merge_boxes(boxes: list[list[int]]) -> list[list[int]]:
+    out = []
+
+    return out

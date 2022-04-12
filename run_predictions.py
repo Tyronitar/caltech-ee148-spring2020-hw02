@@ -5,8 +5,12 @@ from tkinter import W
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
+from pyinstrument import Profiler
 
-from utils import convolve, downsample, make_kernels
+from utils import convolve, downsample, make_kernels, visualize
+
+CENTER_THRESHOLD = 0.9
+CONFIDENCE_THRESHOLD = 0.6
 
 def compute_convolution(I, T, stride=None):
     '''
@@ -19,7 +23,7 @@ def compute_convolution(I, T, stride=None):
     return heatmap
 
 
-def predict_boxes(heatmap):
+def predict_boxes(heatmap, T):
     '''
     This function takes heatmap and returns the bounding boxes and associated
     confidence scores.
@@ -27,35 +31,17 @@ def predict_boxes(heatmap):
 
     output = []
 
-    '''
-    BEGIN YOUR CODE
-    '''
-    
-    '''
-    As an example, here's code that generates between 1 and 5 random boxes
-    of fixed size and returns the results in the proper format.
-    '''
+    h, w, _ = T.shape
+    loc = np.where(heatmap >= CENTER_THRESHOLD)
 
-    box_height = 8
-    box_width = 6
-
-    num_boxes = np.random.randint(1,5)
-
-    for i in range(num_boxes):
-        (n_rows,n_cols,n_channels) = np.shape(I)
-
-        tl_row = np.random.randint(n_rows - box_height)
-        tl_col = np.random.randint(n_cols - box_width)
-        br_row = tl_row + box_height
-        br_col = tl_col + box_width
-
-        score = np.random.random()
-
-        output.append([tl_row,tl_col,br_row,br_col, score])
-
-    '''
-    END YOUR CODE
-    '''
+    for pt in zip(*loc):
+        toplr = pt[0] - h // 2
+        toplc = pt[1] - w // 2
+        botrr = pt[0] + h // 2
+        botrc = pt[1] + w // 2
+        conf = heatmap[toplr:botrr, toplc:botrc].mean()
+        if conf > CONFIDENCE_THRESHOLD:
+            output.append([pt[0] - h // 2, pt[1] - w // 2, pt[0] + h // 2, pt[1] + w // 2, conf])
 
     return output
 
@@ -76,29 +62,13 @@ def detect_red_light_mf(I):
     I[:,:,2] is the blue channel
     '''
 
-    '''
-    BEGIN YOUR CODE
-    '''
-    template_height = 8
-    template_width = 6
-
-    # You may use multiple stages and combine the results
-    T = np.random.random((template_height, template_width))
     kernels = make_kernels()
+    output = []
 
-    heatmap = compute_convolution(I, kernels[0])
-    output = predict_boxes(heatmap)
-    plt.imshow(heatmap)
-    plt.show()
-
-    '''
-    END YOUR CODE
-    '''
-
-    for i in range(len(output)):
-        assert len(output[i]) == 5
-        assert (output[i][4] >= 0.0) and (output[i][4] <= 1.0)
-
+    heatmap = np.zeros(I.shape[:2])
+    for k in kernels:
+        heatmap = compute_convolution(I, k)
+        output.extend(predict_boxes(heatmap, k))
     return output
 
 # Note that you are not allowed to use test data for training.
@@ -126,13 +96,13 @@ for i in range(1):
 
     # read image using PIL:
     # I = Image.open(os.path.join(data_path,file_names_train[i]))
-    I = Image.open(os.path.join(data_path,"RL-010.jpg"))
+    I = Image.open(os.path.join(data_path,"RL-010.jpg")).convert('HSV')
     small = downsample(I, 2)
-    small.show()
 
     # convert to numpy array:
-    small = np.asarray(small)
-    bounding_box = detect_red_light_mf(small)
+    small_arr = np.asarray(small)
+    bounding_boxes = detect_red_light_mf(small_arr)
+    visualize(small, bounding_boxes)
 
     # preds_train[file_names_train[i]] = detect_red_light_mf(I)
 

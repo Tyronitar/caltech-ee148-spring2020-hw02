@@ -35,17 +35,11 @@ def test_convolve_dot():
 
 def test_convolve_cosine():
     k = np.array([[1, 2, 3],
-                  [-4, 7, 4],
-                  [2, -5, 1]
+                  [4, 7, 4],
+                  [2, 5, 1]
                 ])
     k = k[:, :, np.newaxis]
     I = k.copy()
     res = convolve(I, k, mode='cosine')
-    # correct = np.array([
-    #     [21, 59, 37, -19, 2],
-    #     [30, 51, 66, 20, 43],
-    #     [-14, 31, 49, 101, -19],
-    #     [59, 15, 53, -2, 21],
-    #     [49, 57, 64, 76, 10],
-    # ])
+
     assert is_close(res[1, 1], 1.0)
