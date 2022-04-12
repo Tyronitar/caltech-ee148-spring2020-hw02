@@ -7,10 +7,10 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from pyinstrument import Profiler
 
-from utils import convolve, downsample, make_kernels, visualize
+from utils import convolve, downsample, make_kernels, merge_boxes, visualize
 
-CENTER_THRESHOLD = 0.9
-CONFIDENCE_THRESHOLD = 0.6
+CENTER_THRESHOLD = 0.90
+CONFIDENCE_THRESHOLD = 0.70
 
 def compute_convolution(I, T, stride=None):
     '''
@@ -46,7 +46,7 @@ def predict_boxes(heatmap, T):
     return output
 
 
-def detect_red_light_mf(I):
+def detect_red_light_mf(I, sampling_factor=2):
     '''
     This function takes a numpy array <I> and returns a list <output>.
     The length of <output> is the number of bounding boxes predicted for <I>. 
@@ -62,13 +62,15 @@ def detect_red_light_mf(I):
     I[:,:,2] is the blue channel
     '''
 
-    kernels = make_kernels()
+    kernels = make_kernels(sampling_factor=sampling_factor)
     output = []
 
     heatmap = np.zeros(I.shape[:2])
     for k in kernels:
         heatmap = compute_convolution(I, k)
         output.extend(predict_boxes(heatmap, k))
+    output  = merge_boxes(output)
+    output = (np.array(output) * sampling_factor).tolist()
     return output
 
 # Note that you are not allowed to use test data for training.
@@ -95,14 +97,15 @@ preds_train = {}
 for i in range(1):
 
     # read image using PIL:
-    # I = Image.open(os.path.join(data_path,file_names_train[i]))
+    # I = Image.open(os.path.join(data_path,file_names_train[i])).convert('HSV')
     I = Image.open(os.path.join(data_path,"RL-010.jpg")).convert('HSV')
     small = downsample(I, 2)
 
     # convert to numpy array:
     small_arr = np.asarray(small)
-    bounding_boxes = detect_red_light_mf(small_arr)
-    visualize(small, bounding_boxes)
+
+    bounding_boxes = detect_red_light_mf(small_arr, 2)
+    visualize(I, bounding_boxes)
 
     # preds_train[file_names_train[i]] = detect_red_light_mf(I)
 
