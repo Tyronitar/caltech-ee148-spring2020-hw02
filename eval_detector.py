@@ -8,7 +8,17 @@ def compute_iou(box_1, box_2):
     union (IoU) of two bounding boxes.
     '''
     iou = np.random.random()
+    b1 = np.array(box_1)
+    b2 = np.array(box_2)
+    dp = np.minimum(b1[2:], b2[2:]) -  np.maximum(b1[:2], b2[:2]) 
+    int_area = 0
+    if (dp >= 0).all():
+        int_area = dp.prod()
+
+    uni_area = (b1[2:] - b1[:2]).prod() + (b2[2:] - b2[:2]).prod() - int_area
     
+    iou = int_area / uni_area
+
     assert (iou >= 0) and (iou <= 1.0)
 
     return iou
@@ -32,11 +42,12 @@ def compute_counts(preds, gts, iou_thr=0.5, conf_thr=0.5):
     '''
     BEGIN YOUR CODE
     '''
-    for pred_file, pred in preds.iteritems():
+    for pred_file, pred in preds.items():
         gt = gts[pred_file]
         for i in range(len(gt)):
             for j in range(len(pred)):
                 iou = compute_iou(pred[j][:4], gt[i])
+                return TP, FP, FN
 
 
     '''
@@ -50,9 +61,9 @@ preds_path = 'data/hw02_preds'
 gts_path = 'data/hw02_annotations'
 
 # load splits:
-split_path = '../data/hw02_splits'
+split_path = 'data/hw02_splits'
 file_names_train = np.load(os.path.join(split_path,'file_names_train.npy'))
-file_names_test = np.load(os.path.join(split_Path,'file_names_test.npy'))
+file_names_test = np.load(os.path.join(split_path,'file_names_test.npy'))
 
 # Set this parameter to True when you're done with algorithm development:
 done_tweaking = False
@@ -89,6 +100,7 @@ fp_train = np.zeros(len(confidence_thrs))
 fn_train = np.zeros(len(confidence_thrs))
 for i, conf_thr in enumerate(confidence_thrs):
     tp_train[i], fp_train[i], fn_train[i] = compute_counts(preds_train, gts_train, iou_thr=0.5, conf_thr=conf_thr)
+    break
 
 # Plot training set PR curves
 
