@@ -9,10 +9,10 @@ from PIL import Image
 from pyinstrument import Profiler
 import tqdm
 
-from utils import convolve, downsample, make_kernels, merge_boxes, visualize
+from utils import convolve, downsample, make_kernels, merge_boxes, nms, score_clustering, visualize
 
-CENTER_THRESHOLD = 0.90
-CONFIDENCE_THRESHOLD = 0.70
+CENTER_THRESHOLD = 0.9
+CONFIDENCE_THRESHOLD = 0.15
 MIN_WIDTH = 5
 MIN_HEIGHT = 5
 
@@ -27,7 +27,7 @@ def compute_convolution(I, T, stride=None):
     return heatmap
 
 
-def predict_boxes(heatmap, T):
+def predict_boxes(heatmap, T, max_size):
     '''
     This function takes heatmap and returns the bounding boxes and associated
     confidence scores.
@@ -35,19 +35,24 @@ def predict_boxes(heatmap, T):
 
     output = []
 
-    h, w, _ = T.shape
+    # h, w, _ = T.shape
+    max_h, max_w = max_size
     loc = np.where(heatmap >= CENTER_THRESHOLD)
+    centers = zip(*loc)
+
+    return score_clustering(heatmap, threshold=CENTER_THRESHOLD)
 
     for pt in zip(*loc):
-        toplr = pt[0] - h // 2
-        toplc = pt[1] - w // 2
-        botrr = pt[0] + h // 2
-        botrc = pt[1] + w // 2
+    # for i, pt in enumerate(tqdm.tqdm(centers, total=len(loc[0]))):
+        toplr = max(0, pt[0] - h // 2, 0)
+        toplc = max(0, pt[1] - w // 2)
+        botrr = min(max_h, pt[0] + h // 2)
+        botrc = min(max_w, pt[1] + w // 2)
         if botrr == toplr or botrc == toplc:
             continue
         conf = heatmap[toplr:botrr, toplc:botrc].mean()
         if conf > CONFIDENCE_THRESHOLD:
-            output.append([pt[0] - h // 2, pt[1] - w // 2, pt[0] + h // 2, pt[1] + w // 2, conf])
+            output.append([toplr, toplc, botrr, botrc, conf])
 
     return output
 
@@ -72,9 +77,12 @@ def detect_red_light_mf(I, sampling_factor=2):
 
     heatmap = np.zeros(I.shape[:2])
     for k in kernels:
-        heatmap = compute_convolution(I, k)
-        output.extend(predict_boxes(heatmap, k))
+        # heatmap = compute_convolution(I, k)
+        heatmap = np.maximum(compute_convolution(I, k), heatmap)
+        # output.extend(predict_boxes(heatmap, k, I.shape[:2]))
+    output = predict_boxes(heatmap, None, I.shape[:2])
     output  = merge_boxes(output)
+    # output = nms(output)
     output = np.array(output)
     if len(output) > 0:
         output[:, :-1] *= sampling_factor
@@ -120,9 +128,10 @@ for i in tqdm.tqdm(range(len(file_names_train))):
     # visualize(I, bounding_boxes)
 
     preds_train[file_names_train[i]] = bounding_boxes
+    # preds_train["RL-010.jpg"] = bounding_boxes
 
 # save preds (overwrites any previous predictions!)
-with open(os.path.join(preds_path,'preds_train.json'),'w') as f:
+with open(os.path.join(preds_path,'preds_train_test1.json'),'w') as f:
     json.dump(preds_train,f)
 
 if done_tweaking:
