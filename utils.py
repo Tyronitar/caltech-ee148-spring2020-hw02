@@ -98,10 +98,6 @@ def make_kernels(sampling_factor=2) -> list[np.ndarray]:
             k_img = downsample(light_image, sampling_factor)
             kernels.append(np.asarray(k_img))
     
-    # kernels.append(np.asarray(downsample(Image.fromarray(kernels[0], mode='HSV'), 2)))
-    # kernels.append(np.asarray(downsample(Image.fromarray(kernels[1], mode='HSV'), 2)))
-    # kernels.append(np.asarray(downsample(Image.fromarray(kernels[4], mode='HSV'), 0.5)))
-
     return kernels
 
 
@@ -249,23 +245,11 @@ def find_cluster(s: np.ndarray, start: tuple[int, int]) -> list[float]:
 def score_clustering(heatmap: np.ndarray, threshold: float) -> list[list[int]]:
     bounding_boxes = []
 
-    # while not (s == 0).all():
-    # heatmap *= (heatmap > threshold)
     loc = np.where(heatmap >= threshold)
     centers = zip(*loc)
 
-    # start = np.unravel_index(np.argmax(deepcopy(heatmap), axis=None), heatmap.shape)
-    
-    # for i, pt in enumerate(tqdm.tqdm(centers, total=len(loc[0]))):
     for pt in centers:
-    # while not (heatmap == 0).all():
-        # find highest point
-
-        # find cluster around that point
         cluster = find_cluster(deepcopy(heatmap), pt)
-        # if confidence > MIN_CONFIDENCE:
-        # if (cluster_coords[2] - cluster_coords[0]) \
-        #     * (cluster_coords[3] - cluster_coords[1]) >= MIN_AREA:
         bounding_boxes.append(cluster)
 
     return bounding_boxes

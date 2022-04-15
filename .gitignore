@@ -1,3 +1,6 @@
 .pytest_cache/
 data/RedLights2011_Medium/*
 profile*
+
+*.png
+*.jpg
